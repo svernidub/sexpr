@@ -19,17 +19,36 @@ pub fn parse<'a>(sexpr: String) -> Result<SExpr, &'a str> {
     let mut expr_stack: Vec<Expr> = vec!();
 
     let mut string_started = false;
+    let mut prev_string_token = None;
+
+    const ESCAPE_TOKEN: char = '\\';
 
     for token in sexpr.chars() {
-        if token == '"' && !string_started {
-            string_started = true;
+        if token == '"' {
+            if let Some(prev) = prev_string_token {
+                if prev == ESCAPE_TOKEN {
+                    tokens_stack.push(token);
+                    prev_string_token = Some(token);
+                    continue
+                }
+            }
+
+            string_started = !string_started;
+
+            if string_started {
+                prev_string_token = Some(token);
+            } else {
+                prev_string_token = None;
+            }
+        }
+
+        if string_started {
             tokens_stack.push(token);
+            prev_string_token = Some(token);
             continue
-        } else if token == '"' && string_started {
-            string_started = false;
-            tokens_stack.push(token);
-            continue
-        } else if !is_end_terminator(token) {
+        }
+
+        if !is_end_terminator(token) {
             tokens_stack.push(token);
             continue
         } else if is_list_start_terminator(token) {
@@ -41,12 +60,18 @@ pub fn parse<'a>(sexpr: String) -> Result<SExpr, &'a str> {
         let mut sexpr = String::from("");
 
         while let Some(prev_token) = tokens_stack.pop() {
-            if is_start_terminator(prev_token) { break }
+            if prev_token == '"' {
+                string_started = !string_started;
+            }
+
+            if !string_started && is_start_terminator(prev_token) { break }
 
             sexpr = String::from(format!("{}{}", prev_token, sexpr));
         }
 
-        expr_stack.push(expr_parser::parse_expr(sexpr)?);
+        let parsed_expr = expr_parser::parse_expr(sexpr)?;
+        println!("{:#?}", parsed_expr);
+        expr_stack.push(parsed_expr);
 
         if !is_list_end_terminator(token) { continue }
 
@@ -64,13 +89,14 @@ pub fn parse<'a>(sexpr: String) -> Result<SExpr, &'a str> {
     match expr_stack.len() {
         0 => Err("input is empty?"),
         1 => {
-            if let AstExpr(sexpr) = expr_stack.pop().unwrap() {
+            let rest = expr_stack.pop().unwrap();
+            if let AstExpr(sexpr) = rest {
                 Ok((*sexpr.clone()).clone())
             } else {
-                Err("unexpected expression")
+                Err("Expected to have only one expression which will be AST")
             }
         }
-        _ => Err("unexpected expression")
+        _ => Err("Closing bracket missing?")
     }
 }
 
@@ -197,7 +223,7 @@ mod test {
     }
 
     #[test]
-    fn test_full_program() {
+    fn test_complex_program() {
         let sexpr = String::from(r#"(
             (if (> 7 3)
                 (concat "hello" " " "world")

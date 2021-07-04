@@ -59,6 +59,19 @@ mod test {
     }
 
     #[test]
+    fn test_parse_string_with_escaped_quote() {
+        let sexpr = String::from(r#"" abc "efg" ""#);
+        let expr = parse_expr(sexpr).unwrap();
+        let value = String::from(" abc \"efg\" ");
+
+        if let Expr::StringExpr(parsed_value) = expr {
+            assert_eq!(parsed_value, value)
+        } else {
+            panic!("Unexpected expression:\n{:#?}", expr)
+        }
+    }
+
+    #[test]
     fn test_parse_int() {
         let sexpr = String::from("5");
         let expr = parse_expr(sexpr).unwrap();

@@ -24,7 +24,7 @@ fn transform_expressions<'a>(expressions: Vec<Expr>) -> Result<Vec<Rc<SExpr>>, &
             FuncExpr(fname) => Rc::new(SFunc(fname.clone(), vec!())),
             BoolExpr(b) => Rc::new(SBool(b.clone())),
             AstExpr(ast) => ast.clone(),
-            _ => unreachable!("unexpected expression")
+            _ => unreachable!("transform_expressions: unexpected expression")
         }
     }).collect::<Vec<Rc<SExpr>>>();
 
